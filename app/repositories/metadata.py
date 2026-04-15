@@ -1,5 +1,8 @@
+import logging
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.errors import DuplicateKeyError
+
+logger = logging.getLogger(__name__)
 
 
 class MetadataRepository:
@@ -9,8 +12,8 @@ class MetadataRepository:
     async def create_url_metadata(self, url_metadata: dict):
         try:
             result = await self.collection.insert_one(url_metadata)
-        except DuplicateKeyError as e:
-            print("duplicatte url")
+        except DuplicateKeyError:
+            logging.error(f"DuplicateKeyError {url_metadata.get('url')}")
             return None
 
         return result.inserted_id

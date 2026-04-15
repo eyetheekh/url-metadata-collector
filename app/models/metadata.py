@@ -1,13 +1,22 @@
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, AnyHttpUrl, field_validator
 from typing import Dict, Optional, Any
 from datetime import datetime
 from bson import ObjectId
+from enum import Enum
+
+
+class MetadataState(str, Enum):
+    ACCEPTED = "accepted"
+    CREATED = "created"
+    DUPLICATE = "duplicate"
+    FOUND = "found"
+    NOT_FOUND = "not_found"
 
 
 class MetadataCreateRequest(BaseModel):
     """Request model for creating metadata."""
 
-    url: HttpUrl = Field(..., description="URL to collect metadata from")
+    url: AnyHttpUrl = Field(..., description="URL to collect metadata from")
 
     class Config:
         json_schema_extra = {"example": {"url": "https://example.com"}}
@@ -60,13 +69,19 @@ class MetadataPendingResponse(BaseModel):
 class MetadataDocument(BaseModel):
     """Internal document model for MongoDB storage."""
 
+    class MetadataDocumentProcessState(str, Enum):
+        """track background task"""
+
+        PENDING = "pending"
+        PROCESSING = "processing"
+        FAILED = "failed"
+
     url: str
-    headers: Dict[str, Any]
-    cookies: Dict[str, str]
-    page_source: str
-    status_code: int
+    headers: Optional[Dict[str, str]] = None
+    cookies: Optional[Dict[str, str]] = None
+    page_source: Optional[str] = None
+    status_code: Optional[int] = None
+    process_state: MetadataDocumentProcessState = MetadataDocumentProcessState.PENDING
+    failure_count: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True

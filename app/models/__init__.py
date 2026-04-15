@@ -1,4 +1,5 @@
 from .metadata import (
+    MetadataState,
     MetadataDocument,
     MetadataCreateRequest,
     MetadataResponse,
@@ -6,6 +7,7 @@ from .metadata import (
 )
 
 __all__ = [
+    "MetadataState",
     "MetadataDocument",
     "MetadataCreateRequest",
     "MetadataResponse",

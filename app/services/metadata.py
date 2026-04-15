@@ -1,5 +1,6 @@
-from datetime import datetime
-from app.repositories import MetadataRepository
+import asyncio
+from ..repositories import MetadataRepository
+from ..models import MetadataState, MetadataDocument
 
 
 class MetadataService:
@@ -9,23 +10,19 @@ class MetadataService:
     async def get_metadata(self, url: str):
         record = await self.repo.get_url_metadata(url)
         if not record:
-            # trigger background worker
-            return None, 404
-        return record, 200
+            return MetadataState.ACCEPTED, None
+
+        return MetadataState.FOUND, record
 
     async def create_metadata(self, url: str):
-        timestamp = datetime.now()
-        url_object = {
-            "url": url,
-            "headers": None,
-            "cookies": None,
-            "status_code": None,
-            "status": "pending",
-            "created_at": timestamp,
-            "updated_at": timestamp,
-        }
-        _id = await self.repo.create_url_metadata(url_object)
-        if _id is None:
-            return None, 208
-        
-        return {"id": _id, **url_object}, 200
+        record = MetadataDocument(url=url).model_dump()
+        _id = await self.repo.create_url_metadata(record)
+        if _id is None:  # duplicate record
+            return MetadataState.DUPLICATE, None
+
+        return MetadataState.ACCEPTED, {"id": _id, **record}
+
+    async def enque_background_task(self, url: str):
+        # check if its already in processing
+        pass
+

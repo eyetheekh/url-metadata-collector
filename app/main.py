@@ -7,6 +7,7 @@ from .core.config import Settings, get_settings
 from .db.database import init_db, close_client
 from .db.indexes import create_indexes
 from .api.v1.endpoints import metadata
+from .workers import bind_worker
 
 
 logging.basicConfig(
@@ -26,6 +27,10 @@ async def db_lifespan(app: FastAPI):
 
     await create_indexes(app, settings.MONGODB_METADATA_COLLECTION_NAME)
     logger.info("Database indexes created.")
+
+    await bind_worker(app)
+    logger.info("Global Background worker binded.")
+
     yield
 
     # shutdown
