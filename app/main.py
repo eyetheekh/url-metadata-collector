@@ -1,9 +1,12 @@
 import sys
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .core.config import get_settings
-from .api.api_v1.endpoints import metadata_endpoints
+from .core.config import Settings, get_settings
+from .db.database import init_db, close_client
+from .db.indexes import create_indexes
+from .api.v1.endpoints import metadata
 
 
 logging.basicConfig(
@@ -12,6 +15,22 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def db_lifespan(app: FastAPI):
+    # startup
+    settings: Settings = get_settings()
+    await init_db(app, settings)
+    logger.info("Database client initialized.")
+
+    await create_indexes(app, settings.MONGODB_METADATA_COLLECTION_NAME)
+    logger.info("Database indexes created.")
+    yield
+
+    # shutdown
+    await close_client(app)
+    logger.info("Database client closed.")
 
 
 def create_application() -> FastAPI:
@@ -25,6 +44,7 @@ def create_application() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        lifespan=db_lifespan,
     )
 
     app.add_middleware(
@@ -59,7 +79,7 @@ def create_application() -> FastAPI:
         }
 
     app.include_router(
-        metadata_endpoints.router, prefix=settings.APP_VERSION_PREFIX, tags=["metadata"]
+        metadata.router, prefix=settings.APP_VERSION_PREFIX, tags=["metadata"]
     )
 
     return app

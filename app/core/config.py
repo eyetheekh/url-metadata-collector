@@ -1,23 +1,19 @@
-"""
-application configuration using Pydantic settings.
-"""
-
 from pydantic import AnyHttpUrl, BeforeValidator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Annotated, Any, Optional
 
 
-def parse_cors(v: Any) -> list[str] | str:
-    if isinstance(v, str) and not v.startswith("["):
-        return [i.strip() for i in v.split(",")]
-    elif isinstance(v, list | str):
-        return v
-    raise ValueError(v)
-
-
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    @staticmethod
+    def parse_cors(v: Any) -> list[str] | str:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, list | str):
+            return v
+        raise ValueError(v)
 
     APP_NAME: str = "URL Metadata Inventory Service"
     APP_VERSION: str = "1.0.0"
@@ -28,9 +24,11 @@ class Settings(BaseSettings):
         list[AnyHttpUrl] | str, BeforeValidator(parse_cors)
     ] = []
 
-    MONGODB_URL: str = "mongodb://mongodb:27017"
+    MONGODB_URL: str = "mongodb://admin:admin@localhost:27017"
     MONGODB_DB_NAME: str = "metadata_collection_db"
-    MONGODB_COLLECTION_NAME: str = "url_metadata_collection"
+    MONGODB_METADATA_COLLECTION_NAME: str = "url_metadata_collection"
+    MONGODB_MAXPOOL_SIZE: int = 10
+    MONGODB_MINPOOL_SIZE: int = 1
 
     HTTP_TIMEOUT: int = 30
     HTTP_MAX_RETRIES: int = 3
