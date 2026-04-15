@@ -1,7 +1,5 @@
 import httpx
-from ..core.config import get_settings
-
-settings = get_settings()
+from ..core import settings
 
 
 class MetadataCollector:
@@ -10,6 +8,8 @@ class MetadataCollector:
             follow_redirects=True, timeout=settings.HTTP_TIMEOUT
         ) as client:
             response = await client.get(url)
+            if response is None:
+                return None
 
             return {
                 "headers": dict(response.headers),

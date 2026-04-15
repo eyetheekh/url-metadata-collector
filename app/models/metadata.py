@@ -69,19 +69,20 @@ class MetadataPendingResponse(BaseModel):
 class MetadataDocument(BaseModel):
     """Internal document model for MongoDB storage."""
 
-    class MetadataDocumentProcessState(str, Enum):
+    class ProcessState(str, Enum):
         """track background task"""
 
         PENDING = "pending"
         PROCESSING = "processing"
         FAILED = "failed"
+        COMPLETED = "completed"
 
     url: str
     headers: Optional[Dict[str, str]] = None
     cookies: Optional[Dict[str, str]] = None
     page_source: Optional[str] = None
     status_code: Optional[int] = None
-    process_state: MetadataDocumentProcessState = MetadataDocumentProcessState.PENDING
+    process_state: ProcessState = ProcessState.PENDING
     failure_count: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

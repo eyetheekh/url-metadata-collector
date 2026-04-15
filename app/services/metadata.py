@@ -21,8 +21,3 @@ class MetadataService:
             return MetadataState.DUPLICATE, None
 
         return MetadataState.ACCEPTED, {"id": _id, **record}
-
-    async def enque_background_task(self, url: str):
-        # check if its already in processing
-        pass
-

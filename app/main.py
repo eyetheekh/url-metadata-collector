@@ -3,7 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .core.config import Settings, get_settings
+from .core import settings
 from .db.database import init_db, close_client
 from .db.indexes import create_indexes
 from .api.v1.endpoints import metadata
@@ -21,14 +21,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def db_lifespan(app: FastAPI):
     # startup
-    settings: Settings = get_settings()
     await init_db(app, settings)
     logger.info("Database client initialized.")
 
     await create_indexes(app, settings.MONGODB_METADATA_COLLECTION_NAME)
     logger.info("Database indexes created.")
 
-    await bind_worker(app)
+    await bind_worker(app, settings)
     logger.info("Global Background worker binded.")
 
     yield
@@ -40,7 +39,6 @@ async def db_lifespan(app: FastAPI):
 
 def create_application() -> FastAPI:
     """Application factory pattern."""
-    settings = get_settings()
 
     app = FastAPI(
         title=settings.APP_NAME,

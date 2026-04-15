@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status
 from fastapi.responses import JSONResponse
 from pydantic import AnyHttpUrl
+
+from app.models.metadata import MetadataDocument
 from ....dependencies.metadata import get_metadata_service, get_worker
 from ....services import MetadataService
 from ....models import MetadataState, MetadataCreateRequest, MetadataResponse
@@ -20,7 +22,7 @@ router: APIRouter = APIRouter(tags=["metadata"])
     status_code=status.HTTP_200_OK,
     summary="Retrieve metadata",
     description="Retrieve metadata for a URL. If not found, triggers background collection.",
-    response_model=MetadataResponse,
+    response_model=MetadataDocument,
 )
 async def get_url_metadata(
     url: AnyHttpUrl,
@@ -28,22 +30,24 @@ async def get_url_metadata(
     worker: MetadataWorker = Depends(get_worker),
 ):
     try:
-        state, metadata = await servicer.get_metadata(str(url))
+        _url = str(url)
+        state, metadata = await servicer.get_metadata(_url)
 
         if state == MetadataState.FOUND and metadata:
             return metadata
 
-        elif state == MetadataState.ACCEPTED and not metadata:
-            # trigger background task with worker
-            asyncio.create_task(worker.process(str(url)))
+        elif state == MetadataState.ACCEPTED:  # trigger background task with worker
+            # wait for the object to be createad in db
+            await servicer.create_metadata(_url)
+            asyncio.create_task(worker.process(_url))  # trigger task
 
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
-                content="URL Scheduled for Metadata Collection.",
+                content={"message": "URL scheduled for metadata collection."},
             )
 
     except Exception:
-        logger.exception("Failed to retreive metadata")
+        logger.exception(f"Failed to retreive metadata {str(url)}")
         raise HTTPException(500, "Server Encountered an Unexpected Error.")
 
 
@@ -52,7 +56,7 @@ async def get_url_metadata(
     status_code=status.HTTP_201_CREATED,
     summary="Create metadata record",
     description="Collect and store metadata (headers, cookies, page source) for a given URL.",
-    response_model=MetadataResponse,
+    response_model=MetadataDocument,
 )
 async def create_url_metadata(
     input_json: MetadataCreateRequest,
@@ -60,10 +64,12 @@ async def create_url_metadata(
     worker: MetadataWorker = Depends(get_worker),
 ):
     try:
-        state, metadata = await servicer.create_metadata(str(input_json.url))
+        _url = str(input_json.url)
+        state, metadata = await servicer.create_metadata(_url)
         if state == MetadataState.ACCEPTED and metadata:
-            res = await worker.process(str(input_json.url))
-            return res
+            await worker.process(_url)
+            _, metadata = await servicer.get_metadata(_url)
+            return metadata
 
         elif state == MetadataState.DUPLICATE:
             raise HTTPException(
@@ -73,7 +79,7 @@ async def create_url_metadata(
     except HTTPException:
         raise
     except Exception:
-        logger.exception("Failed to create metadata")
+        logger.exception(f"Failed to create metadata {str(input_json.url)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
