@@ -78,9 +78,7 @@ def create_application() -> FastAPI:
             "health": "/health",
         }
 
-    app.include_router(
-        metadata.router, prefix=settings.APP_VERSION_PREFIX, tags=["metadata"]
-    )
+    app.include_router(metadata.router, prefix=settings.APP_VERSION_PREFIX)
 
     return app
 
