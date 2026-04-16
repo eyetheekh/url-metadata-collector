@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 from pydantic import AnyHttpUrl, BeforeValidator
@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     APP_VERSION_PREFIX: str = "/v1"
 
     BACKEND_CORS_ORIGINS: Annotated[
-        list[AnyHttpUrl] | str, BeforeValidator(parse_cors)
-    ] = []
+        list[AnyHttpUrl | str] | str, BeforeValidator(parse_cors)
+    ] = ["*"]
 
     MONGODB_URL: str = "mongodb://admin:admin@localhost:27017"
     MONGODB_DB_NAME: str = "metadata_collection_db"
