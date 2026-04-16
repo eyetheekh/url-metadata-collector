@@ -1,4 +1,3 @@
-import asyncio
 from ..repositories import MetadataRepository
 from ..models import MetadataState, MetadataDocument
 
@@ -21,3 +20,6 @@ class MetadataService:
             return MetadataState.DUPLICATE, None
 
         return MetadataState.ACCEPTED, {"id": _id, **record}
+
+    def remove_trailing_slash_to_url(self, url: str) -> str:
+        return url.rstrip("/")

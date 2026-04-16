@@ -14,7 +14,7 @@ class MetadataRepository:
         try:
             result = await self.collection.insert_one(url_metadata)
         except DuplicateKeyError:
-            logging.error(f"DuplicateKeyError {url_metadata.get('url')}")
+            logging.error(f"DuplicateKeyError. Skipping adding URL to collection. {url_metadata.get('url')}")
             return None
 
         return result.inserted_id
