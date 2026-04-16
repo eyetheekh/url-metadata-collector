@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     HTTP_TIMEOUT: int = 30
     HTTP_MAX_RETRIES: int = 3
+    BACKGROUND_WORKER_RETRY: bool = False
 
     class Config:
         env_file = ".env"

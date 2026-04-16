@@ -115,4 +115,8 @@ async def bind_worker(app: FastAPI, settings: Settings) -> None:
 
     app.state.worker = MetadataWorker(repo, collector)
 
-    asyncio.create_task(app.state.worker.process_stale_jobs())
+    if settings.BACKGROUND_WORKER_RETRY:
+        logging.info("BACKGROUND_WORKER_RETRY Enabled.")
+        asyncio.create_task(app.state.worker.process_stale_jobs())
+    else:
+        logging.warning("BACKGROUND_WORKER_RETRY Disabled. Failed jobs will not be retried.")
