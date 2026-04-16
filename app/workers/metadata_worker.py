@@ -39,7 +39,15 @@ class MetadataWorker:
             cls._instance = super(MetadataWorker, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, repo: MetadataRepository, collector: MetadataCollector):
+    def __init__(
+        self,
+        repo: MetadataRepository,
+        collector: MetadataCollector,
+        stale_jobs_max_retries: int = 3,
+        stale_jobs_max_limit: int = 10,
+        stale_jobs_retry_delay: int = 10,
+        stale_jobs_pickup_delay: int = 60,
+    ):
         # initialize only once
         if not hasattr(self, "_initialized"):
             logger.info(f"MetadataWorker worker started: {str(uuid.uuid4())[:6]}")
@@ -51,6 +59,10 @@ class MetadataWorker:
 
             self.repo = repo
             self.collector = collector
+            self.stale_jobs_max_retries = stale_jobs_max_retries
+            self.stale_jobs_max_limit = stale_jobs_max_limit
+            self.stale_jobs_retry_delay = stale_jobs_retry_delay
+            self.stale_jobs_pickup_delay = stale_jobs_pickup_delay
 
             self._initialized: bool = True
 
@@ -95,16 +107,32 @@ class MetadataWorker:
 
     async def process_stale_jobs(self):
         """
-        Processes jobs that have exceeded retry thresholds and time delays.
-        Retrieves stale jobs from the repository and processes them sequentially.
-        Raises:
-            NotImplementedError: This method is not yet implemented.
+        Background loop to retry failed jobs.
         """
-        # TODO process_stale_jobs
-        # check db for process_count > threshold && timedelta > retry after
-        # use self.process to pick task
-        # yield & sleep
-        raise NotImplementedError()
+
+        logger.info("Starting stale job retry loop...")
+        while True:
+            try:
+                jobs = await self.repo.claim_stale_jobs(
+                    max_retries=self.stale_jobs_max_retries,
+                    retry_delay_seconds=self.stale_jobs_retry_delay,
+                    limit=self.stale_jobs_max_limit,
+                )
+                if jobs:
+                    logger.info(f"Retrying {len(jobs)} failed jobs")
+
+                    for job in jobs:
+                        url = job["url"]
+                        asyncio.create_task(self.process(url))
+                else:
+                    logger.info(
+                        f"No Stale job to retry. Sleeping for {self.stale_jobs_pickup_delay} seconds."
+                    )
+
+            except Exception as e:
+                logger.exception(f"Error in stale job processor: {e}")
+
+            await asyncio.sleep(self.stale_jobs_pickup_delay)
 
 
 async def bind_worker(app: FastAPI, settings: Settings) -> None:
@@ -113,10 +141,19 @@ async def bind_worker(app: FastAPI, settings: Settings) -> None:
     repo = MetadataRepository(db[settings.MONGODB_METADATA_COLLECTION_NAME])
     collector = MetadataCollector()
 
-    app.state.worker = MetadataWorker(repo, collector)
+    app.state.worker = MetadataWorker(
+        repo=repo,
+        collector=collector,
+        stale_jobs_pickup_delay=settings.STALE_JOBS_PICKUP_DELAY,
+        stale_jobs_retry_delay=settings.STALE_JOBS_RETRY_DELAY,
+        stale_jobs_max_limit=settings.STALE_JOBS_MAX_LIMIT,
+        stale_jobs_max_retries=settings.STALE_JOBS_MAX_RETRIES,
+    )
 
-    if settings.BACKGROUND_WORKER_RETRY:
+    if settings.STALE_JOBS_RETRY_WORKER:
         logging.info("BACKGROUND_WORKER_RETRY Enabled.")
         asyncio.create_task(app.state.worker.process_stale_jobs())
     else:
-        logging.warning("BACKGROUND_WORKER_RETRY Disabled. Failed jobs will not be retried.")
+        logging.warning(
+            "BACKGROUND_WORKER_RETRY Disabled. Failed jobs will not be retried."
+        )
