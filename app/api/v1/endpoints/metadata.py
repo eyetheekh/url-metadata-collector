@@ -5,7 +5,7 @@ from fastapi import status
 from fastapi.responses import JSONResponse
 from pydantic import AnyHttpUrl
 
-from ....dependencies.metadata import get_metadata_service, get_worker
+from ..dependencies.metadata import get_metadata_service, get_worker
 from ....services import MetadataService
 from ....models import MetadataState, MetadataCreateRequest, MetadataResponse, MetadataPendingResponse
 from ....workers import MetadataWorker

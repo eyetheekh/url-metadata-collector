@@ -16,7 +16,7 @@ class CSPMiddleware(BaseHTTPMiddleware):
             "style-src 'self'; "
             "img-src 'self' data:; "
             "connect-src 'self'; "
-            "frame-ancestors 'none'; "
+            "frame-ancestors 'none';"
         )
 
         return response

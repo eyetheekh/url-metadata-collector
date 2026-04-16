@@ -4,7 +4,7 @@ from ..core import settings
 
 
 class MetadataCollector:
-    async def collect(self, url: str):
+    async def collect(self, url: str) -> dict | None:
         async with httpx.AsyncClient(
             follow_redirects=True, timeout=settings.HTTP_TIMEOUT
         ) as client:

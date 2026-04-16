@@ -1,8 +1,8 @@
 from fastapi import Request, Depends
 
-from ..repositories import MetadataRepository
-from ..core import settings
-from ..services import MetadataService
+from ....repositories import MetadataRepository
+from ....core import settings
+from ....services import MetadataService
 
 
 def get_database(request: Request):
