@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     APP_NAME: str = "URL Metadata Inventory Service"
     APP_VERSION: str = "1.0.0"
     APP_VERSION_PREFIX: str = "/v1"
-    DEBUG: bool = True
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyHttpUrl] | str, BeforeValidator(parse_cors)
@@ -32,10 +31,6 @@ class Settings(BaseSettings):
 
     HTTP_TIMEOUT: int = 30
     HTTP_MAX_RETRIES: int = 3
-
-    BACKGROUND_WORKER_ENABLED: bool = True
-
-    REDIS_URL: Optional[str] = "redis://redis:6379/0"
 
     class Config:
         env_file = ".env"
