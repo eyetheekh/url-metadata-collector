@@ -72,7 +72,7 @@ async def create_url_metadata(
         elif state == MetadataState.DUPLICATE:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"url": _url, "message": "URL already exists"},
+                detail={"url": _url, "message": "URL already exists."},
             )
     except HTTPException:
         raise
