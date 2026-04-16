@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.middlewares import CSPMiddleware
 from .core import settings
 from .db.database import init_db, close_client
 from .db.indexes import create_indexes
@@ -62,6 +63,7 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(CSPMiddleware)
 
     @app.get("/health", tags=["health"])
     async def health_check():
