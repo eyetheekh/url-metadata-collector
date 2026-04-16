@@ -12,3 +12,7 @@ wheels/
 
 # tests
 .pytest_cache/
+
+# env files
+*.env*
+!*.env.*.example
