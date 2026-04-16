@@ -10,6 +10,9 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    environment:
+      - WORKERS=8
+      - SERVER_TIMEOUT=300
     env_file:
       - .env
     depends_on:
@@ -46,7 +49,9 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: admin
       ME_CONFIG_MONGODB_URL: mongodb://admin:admin@mongodb:27017/metadata_collection_db?authSource=admin
-
+    depends_on:
+      mongodb:
+        condition: service_healthy
 volumes:
   mongodb_data:
     driver: local

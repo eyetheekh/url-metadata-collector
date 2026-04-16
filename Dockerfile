@@ -1,57 +1,65 @@
 ########################################################
-# builder
-FROM ubuntu:26.04 AS builder
+# build
+FROM python:3.11-slim AS builder
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV UV_SYSTEM_PYTHON=0
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# minimal deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # install uv
-RUN curl -Ls https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /uvx /bin/
 
-WORKDIR /app
+WORKDIR /build
 
-# copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# create Python 3.11 environment via uv
-RUN uv venv /opt/venv --python 3.11 \
-    && . /opt/venv/bin/activate \
-    && uv sync --frozen --no-dev
+# no symlink venv
+RUN python -m venv /opt/venv --copies
+RUN /opt/venv/bin/python -m pip install -U pip
 
-# copy source
-COPY . .
+# install deps
+RUN uv export --no-dev > requirements.txt && \
+    /opt/venv/bin/python -m pip install --no-cache-dir -r requirements.txt && \
+    rm -f requirements.txt /bin/uv /bin/uvx
+
 
 ########################################################
 # runtime
-FROM ubuntu:26.04
+FROM python:3.11-slim AS runtime
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
-# only required runtime libs (no python3 from apt!)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# copy venv (includes Python 3.11 runtime)
-COPY --from=builder /opt/venv /opt/venv
-
-# copy app
 WORKDIR /app
-COPY --from=builder /app /app
 
-# non-root user
-RUN useradd -m appuser
+COPY --from=builder /opt/venv /opt/venv
+COPY app/ ./app/
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
+
+ENV WORKERS=4
+ENV SERVER_TIMEOUT=300
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD gunicorn app.main:app \
+    -k uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --workers ${WORKERS} \
+    --timeout ${SERVER_TIMEOUT}
