@@ -9,4 +9,4 @@ async def create_indexes(app: FastAPI, collection_name: str) -> None:
     await db[collection_name].create_index("url", unique=True)
 
     # TTL index for auto-cleanup (30 days)
-    await db[collection_name].create_index("created_at", expireAfterSeconds=2592000)
+    await db[collection_name].create_index("process_state", expireAfterSeconds=2592000)
