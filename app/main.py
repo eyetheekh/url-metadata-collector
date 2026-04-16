@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from .core import settings
 from .db.database import init_db, close_client
 from .db.indexes import create_indexes

@@ -1,7 +1,7 @@
-from pydantic import AnyHttpUrl, BeforeValidator
-from pydantic_settings import BaseSettings
-from functools import lru_cache
 from typing import Annotated, Any, Optional
+from functools import lru_cache
+from pydantic_settings import BaseSettings
+from pydantic import AnyHttpUrl, BeforeValidator
 
 
 class Settings(BaseSettings):

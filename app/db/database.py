@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from pymongo import AsyncMongoClient
-from app.core.config import Settings
+
+from ..core import Settings
 
 
-async def init_db(app: FastAPI, settings: Settings):
+async def init_db(app: FastAPI, settings: Settings) -> None:
     client = AsyncMongoClient(
         settings.MONGODB_URL,
         maxPoolSize=settings.MONGODB_MAXPOOL_SIZE,
