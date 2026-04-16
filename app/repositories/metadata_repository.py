@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.errors import DuplicateKeyError
 
@@ -61,6 +61,42 @@ class MetadataRepository:
             {"url": url, "process_state": "pending"},
             {"$set": {"process_state": "processing"}},
         )
+
+    async def claim_stale_jobs(
+        self,
+        max_retries: int,
+        retry_delay_seconds: int,
+        limit: int,
+    ):
+        """
+        Claim failed jobs eligible for retry.
+        """
+
+        cutoff_time = datetime.utcnow() - timedelta(seconds=retry_delay_seconds)
+
+        cursor = self.collection.find(
+            {
+                "process_state": "failed",
+                "failure_count": {"$lt": max_retries},
+                "updated_at": {"$lte": cutoff_time},
+            }
+        ).limit(limit)
+
+        jobs = []
+        async for doc in cursor:
+            updated = await self.collection.find_one_and_update(
+                {
+                    "_id": doc["_id"],
+                    "process_state": "failed",
+                },
+                {
+                    "$set": {"process_state": "pending"},
+                },
+            )
+            if updated:
+                jobs.append(updated)
+
+        return jobs
 
     async def mark_completed(self, url: str, data: dict):
         """

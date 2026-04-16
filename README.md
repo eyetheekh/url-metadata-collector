@@ -30,6 +30,8 @@ A FastAPI-based service that collects and serves metadata (headers, cookies, pag
 
 # Architecture
 
+docs/architecture.png
+![Architecture Diagram](docs/architecture.png)
 ```
 Client
    ↓

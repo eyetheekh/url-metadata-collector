@@ -31,7 +31,12 @@ class Settings(BaseSettings):
 
     HTTP_TIMEOUT: int = 30
     HTTP_MAX_RETRIES: int = 3
-    BACKGROUND_WORKER_RETRY: bool = False
+    STALE_JOBS_RETRY_WORKER: bool = False
+
+    STALE_JOBS_MAX_RETRIES: int = 3
+    STALE_JOBS_MAX_LIMIT: int = 10
+    STALE_JOBS_RETRY_DELAY: int = 15
+    STALE_JOBS_PICKUP_DELAY: int = 60
 
     class Config:
         env_file = ".env"
