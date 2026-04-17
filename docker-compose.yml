@@ -20,6 +20,8 @@ services:
     image: mongo:7.0
     container_name: dev_metadata_inventory_mongodb
     restart: unless-stopped
+    env_file:
+      - .env
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
