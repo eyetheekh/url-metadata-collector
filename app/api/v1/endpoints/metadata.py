@@ -36,9 +36,10 @@ async def get_url_metadata(
     """
     Retrieves metadata for a given URL.
 
-    If metadata is already available, it returns the metadata from the db lookup immediately.
-    If metadata is not present, it schedules a background task to collect
-    the metadata and returns a 202 Accepted response.
+    If metadata is already available and completed, it returns the stored metadata immediately.
+    If the metadata record exists but is pending or processing, it returns a 202 Accepted response.
+    If the URL is not yet tracked, it creates a metadata record, schedules background collection,
+    and returns a 202 Accepted response.
 
     Args:
         url (AnyHttpUrl): The URL to fetch metadata for. Must be a valid HTTP/HTTPS URL
@@ -48,15 +49,15 @@ async def get_url_metadata(
         worker (MetadataWorker): The metadata worker instance for processing metadata
             collection tasks.
     Returns:
-        dict (MetadataResponse): The metadata object if found and available.
-        JSONResponse: A 202 Accepted response with a message indicating the URL has been
-            scheduled for metadata collection.
+        MetadataResponse|JSONResponse: The metadata object when available, or a JSONResponse
+            with a 202 Accepted status when metadata collection is pending, processing, or newly scheduled.
     Raises:
         HTTPException: A 500 Internal Server Error if an unexpected error occurs during
             metadata retrieval or processing.
     Status Codes:
         200: Metadata found and returned successfully.
-        202: URL accepted and scheduled for metadata collection in the background.
+        202: Metadata retrieval is pending, processing, or newly scheduled for collection.
+        503: Metadata collection failed for the requested URL.
         500: Server encountered an unexpected error.
     Note:
         - Normalizes the input URL by removing trailing slashes for consistency.
@@ -65,8 +66,22 @@ async def get_url_metadata(
     try:
         state, metadata = await servicer.get_metadata(_url)
 
-        if state == MetadataState.FOUND and metadata:
-            return metadata
+        if state == MetadataState.FOUND and metadata: # metadata found in db, return it according to process_state
+            process_state = metadata.get("process_state")
+            if process_state in ["pending", "processing"]:
+                return JSONResponse(
+                    status_code=status.HTTP_202_ACCEPTED,
+                    content={"message": "Metadata collection in progress."},
+                )
+
+            if process_state == "failed":
+                return JSONResponse(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    content={"message": "Metadata collection failed."},
+                )
+
+            if process_state == "completed":
+                return metadata
 
         elif state == MetadataState.ACCEPTED:  # trigger background task with worker
             # wait for the object to be createad in db
