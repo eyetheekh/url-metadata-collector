@@ -111,7 +111,10 @@ class MetadataWorker:
         """
 
         logger.info("Starting stale job retry loop...")
-        while True:
+        # FIXME: use asyncio.Event to signal shutdown and graceful db state updates.
+        # loop runs indefinitely, without shutdown handling.
+        # tasks that are executed at shutdown may have inconsistent execution state in db.
+        while True: # loop to continuously check for stale jobs to retry
             try:
                 jobs = await self.repo.claim_stale_jobs(
                     max_retries=self.stale_jobs_max_retries,

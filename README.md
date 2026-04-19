@@ -6,15 +6,15 @@ A FastAPI-based service that collects and serves metadata (headers, cookies, pag
 
 # Features
 
-* **POST /url_metadata**
+* **POST /v1/url_metadata**
 
-  * Collects metadata synchronously
-  * Stores in MongoDB
+  * Accepts a URL for metadata collection
+  * Stores request state in MongoDB and triggers asynchronous processing
 
-* **GET /url_metadata**
+* **GET /v1/url_metadata**
 
   * Returns metadata if available
-  * Triggers background processing if missing (returns `202 Accepted`)
+  * Triggers background processing if metadata is missing or pending (returns `202 Accepted`)
 
 * **Background Worker**
 
@@ -137,10 +137,12 @@ url: AnyHttpUrl
 
 ### Behavior
 
-| Case      | Response     |
-| --------- | ------------ |
-| Exists    | 200 OK       |
-| Not found | 202 Accepted |
+| Case                          | Response              |
+| ----------------------------- | --------------------- |
+| Metadata completed            | 200 OK                |
+| Metadata pending or processing| 202 Accepted          |
+| URL not tracked yet           | 202 Accepted          |
+| Metadata collection failed    | 503 Service Unavailable |
 
 ### Example
 
@@ -162,10 +164,11 @@ curl "http://localhost:8000/v1/url_metadata?url=https://example.com"
 
 ### Behavior
 
-| Case      | Response     |
-| --------- | ------------ |
-| New URL   | 201 Created  |
-| Duplicate | 409 Conflict |
+| Case            | Response     |
+| --------------- | ------------ |
+| New URL         | 201 Created  |
+| Duplicate       | 409 Conflict |
+| Accepted for processing | 201 Created |
 
 ---
 
@@ -177,7 +180,7 @@ curl "http://localhost:8000/v1/url_metadata?url=https://example.com"
 
 * Triggered via:
 
-  * GET (on db lookup miss)
+  * GET (on db lookup miss or pending state)
   * POST (after creation)
 
 * Utilizes asyncio.create_task() to fire and forget the task to the event loop.
